@@ -1,0 +1,259 @@
+---
+title: "finance"
+author: "Purity"
+date: "29/04/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+test<-read.csv("Test_v2.csv",stringsAsFactors = F,header = T)
+train<-read.csv("Train_v2 (1).csv",stringsAsFactors = F,header = T)
+#test$bank_account<-NA
+dim(train)
+dim(test)
+```
+
+
+
+```{r pressure, echo=FALSE}
+head(train,20)
+head(test)
+str(train)
+str(test)
+```
+
+```{r}
+#join both
+data2<-rbind(train,test)
+data2
+tail(data2)
+```
+
+```{r}
+colSums(is.na(data2))
+```
+#no NAs except the one we should predict
+```{r}
+library(dplyr)
+glimpse(data2)
+```
+```{r}
+hist(data2$household_size)
+```
+#data is too much skewed because most house hold size are less than 10
+```{r}
+summary(data2)
+```
+```{r}
+#check duplicates
+anyDuplicated(data2)
+```
+#we have no duplicates
+```{r}
+hist(data2$age_of_respondent)
+
+```
+```{r}
+library(ggplot2)
+ggplot(data2,aes(x = bank_account,y = log(age_of_respondent)))+
+  geom_col()
+```
+#most of the people have no account balances
+```{r}
+ggplot(data2,aes(bank_account))+
+  geom_bar(stat = "count")
+```
+
+```{r}
+#check the country
+ggplot(data2,aes(country,fill = bank_account))+
+  geom_bar(stat = "count")
+```
+#Rwanda is the ,most interviewed 
+```{r}
+ggplot(data2,aes(y= age_of_respondent,x = cellphone_access,fill = bank_account))+
+  geom_col()
+```
+#check where most population is located
+```{r}
+ggplot(data2,aes(location_type,fill = bank_account))+
+  geom_bar(stat = "count")
+```
+#most of the people who were intervied are mainly situated in the rural area hence that is why they dont have bank account
+```{r}
+ggplot(data2,aes(job_type,fill = bank_account))+
+  geom_bar(stat = "count")
+  #theme(element_text(axis.title.x = 90))
+```
+
+```{r}
+ggplot(data2,aes( education_level,fill = bank_account))+
+  geom_bar(stat = "count")
+```
+#most people with bank account are educated
+```{r}
+ggplot(data2,aes(gender_of_respondent ,fill = bank_account))+
+  geom_bar(stat = "count")
+
+```
+
+#mostly female were there to respond to respond but seems not to have bank account
+#for the males they are few to respond but have bank account
+```{r}
+ggplot(data2,aes( marital_status ,fill = bank_account))+
+  geom_bar(stat = "count")
+
+```
+
+#most of the people with bank account are married or single
+```{r}
+ggplot(data2,aes(relationship_with_head  ,fill = bank_account))+
+  geom_bar(stat = "count")
+
+
+```
+#the head were mostly intervied and they mostly had bank account followed by their spouses
+```{r}
+str(data2)
+dim(test)
+```
+```{r}
+
+data2 = data2[,-3]
+dim(data2)
+head(data2)
+```
+
+```{r}
+sparse_matrix<-sparse.model.matrix(bank_account~.,data = data2)[,-1]
+```
+```{r}
+#knitr::kable(train2)
+```
+
+```{r}
+#library(dummies)
+#train<-fastDummies::dummy_cols(train,remove_first_dummy = T,remove_selected_columns = T)
+head(train)
+
+#library(GGally)
+
+#knitr::kable(train)
+```
+```{r}
+require(xgboost)
+require(Matrix)
+require(data.table)
+if(!require('vcd'))install.packages('vcd)
+
+```
+
+```{r}
+data2<-data.table(data2,keep.rownames = F)
+head(data2)
+tail(data2)
+```
+```{r}
+train2<-data2[1:23524,-3]
+test2<-data2[23525:33610,-3]
+```
+```{r}
+dtrain<-xgb.DMatrix(as.matrix(train2))
+```
+
+```{r}
+sparse_matrix1<-sparse.model.matrix(bank_account~.,data = train2)[,-1]
+
+
+# and transform them in 
+```
+```{r}
+head(sparse_matrix1)
+```
+
+```{r}
+dim(train2)
+```
+
+```{r}
+
+output_vector_train = train2[,bank_account]=="Yes"
+head(output_vector_train)
+```
+```{r}
+head(output_vector_train)
+dim(output_vector_train)
+```
+
+```{r}
+bst<-xgboost(data = sparse_matrix1,label = output_vector_train,max_depth =4,eta = 1,nthread = 2,nrounds = 10,objective = "binary:logistic")
+```
+```{r}
+summary(bst)
+str(test2)
+#test2$bank_account<-as.logical(test2$bank_account)
+str(test2)
+```
+```{r}
+str(test2)
+
+```
+
+```{r}
+sparse_matrix2<-sparse.model.matrix(bank_account~.,data = test2)[,-1]
+
+```
+
+```{r}
+test2$pred<-predict(bst,sparse_matrix2)
+test2$pred
+
+```
+```{r}
+predlo<-predict(bst,sparse_matrix2)
+test2$predq<-ifelse(predlo>0.56,1,0)
+#test2$y_predq<-factor(predq,levels = c(0,1))
+head(predq)
+
+```
+
+```{r}
+head(test2)
+test2<-cbind(test2,data2$uniqueid[])
+```
+```{r}
+library(tidyverse)
+sample_n(3,test2)
+```
+
+```{r}
+uniqueid<-paste(test$uniqueid,test$country,sep = " x ")
+head(
+  chack,20
+)
+```
+```{r}
+bank_account = test2$predq
+```
+```{r}
+sub<-cbind(uniqueid,bank_account)
+write.csv(sub,file = "SubmissionFile.csv",row.names = F)
+SubmissionFile.csv<-read.csv("SubmissionFile.csv",header = T)
+view(SubmissionFile.csv)
+```
+```{r}
+library(readr)
+SubmissionFile <- read_csv("SubmissionFile.csv")
+View(SubmissionFile)
+```
+
