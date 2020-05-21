@@ -2,7 +2,7 @@
 title: "finance"
 author: "Purity"
 date: "29/04/2020"
-output: word_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
