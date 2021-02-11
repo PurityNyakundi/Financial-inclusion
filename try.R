@@ -14,5 +14,5 @@ View(rer)
 ?paste
 
 read<-read.csv("SubmissionFile.csv",stringsAsFactors = F)
-dim(read)
+
 str(read)
